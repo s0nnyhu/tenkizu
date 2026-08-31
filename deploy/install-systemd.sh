@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install TenkiZu as a systemd service (Amazon Lightsail / Ubuntu).
-# Usage, from the repo root:
-#   npm ci && npm run build
+# Usage, from the repo root (512 Mo RAM : d’abord sudo ./deploy/setup-swap.sh) :
+#   npm ci --no-audit --no-fund && npm run build:vps
 #   sudo ./deploy/install-systemd.sh
 set -euo pipefail
 

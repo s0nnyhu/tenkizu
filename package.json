@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --port 3014",
     "build": "next build",
+    "build:vps": "NODE_OPTIONS=--max-old-space-size=384 next build",
     "start": "next start --hostname 0.0.0.0 --port 3014"
   },
   "dependencies": {
