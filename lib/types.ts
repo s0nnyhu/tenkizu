@@ -93,6 +93,15 @@ export type ModelDayValue = {
   beatenByMetar: boolean;
 };
 
+export type GefsDay = {
+  date: string;
+  mean: number | null;
+  min: number | null;
+  max: number | null;
+  spread: number | null;
+  n: number;
+};
+
 export type Consensus = {
   mean: number | null;
   median: number | null;
@@ -185,6 +194,7 @@ export type StationDay = {
   consensus: Consensus;
   models: ModelDayValue[];
   buckets: Bucket[];
+  gefs: GefsDay | null;
 };
 
 export type WxChip = {

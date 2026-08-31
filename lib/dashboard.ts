@@ -1,5 +1,6 @@
 import { fetchHko } from "./hko";
 import { fetchObsForStations, metarRawUrl, type StationObsBundle } from "./metar";
+import { fetchGefsDaily } from "./gefs";
 import { fetchModelsForStation, fetchModelsForStations } from "./openmeteo";
 import { fillWuHourlyUrl } from "./parse";
 import { discoverHighestTempEvents } from "./polymarket";
@@ -280,19 +281,17 @@ export async function buildStation(icaoParam: string): Promise<StationPayload> {
   }
 
   const runningJ = bundle?.byDate[today]?.runningMaxMarket ?? null;
-  const modelPack = await fetchModelsForStation({
-    icao: station.icao,
-    lat: station.lat,
-    lon: station.lon,
-    timezone: station.timezone,
-    unit,
-    dates: [addDaysISO(today, -1), ...dates],
-    today,
-    runningMaxJ: runningJ,
-  });
-  if (modelPack.error) errors.push({ source: "Open-Meteo", message: modelPack.error });
-
-  const [wuPack, wxOutlook] = await Promise.all([
+  const [modelPack, wuPack, wxOutlook, gefsPack] = await Promise.all([
+    fetchModelsForStation({
+      icao: station.icao,
+      lat: station.lat,
+      lon: station.lon,
+      timezone: station.timezone,
+      unit,
+      dates: [addDaysISO(today, -1), ...dates],
+      today,
+      runningMaxJ: runningJ,
+    }),
     fetchWundergroundStation({
       icao: station.icao,
       metarIcao: station.metarIcao,
@@ -305,8 +304,18 @@ export async function buildStation(icaoParam: string): Promise<StationPayload> {
       timezone: station.timezone,
       metar: last,
     }),
+    fetchGefsDaily({
+      icao: station.icao,
+      lat: station.lat,
+      lon: station.lon,
+      timezone: station.timezone,
+      unit,
+      dates,
+    }),
   ]);
+  if (modelPack.error) errors.push({ source: "Open-Meteo", message: modelPack.error });
   if (wuPack.error) errors.push({ source: "Wunderground", message: wuPack.error });
+  if (gefsPack.error) errors.push({ source: "GEFS", message: gefsPack.error });
 
   const days = dates.map((date) => {
     const event = events.find((e) => e.localDate === date) ?? null;
@@ -324,6 +333,7 @@ export async function buildStation(icaoParam: string): Promise<StationPayload> {
       consensus,
       models: dayModels,
       buckets: event?.buckets ?? [],
+      gefs: gefsPack.byDate[date] ?? null,
     };
   });
 

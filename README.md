@@ -31,7 +31,7 @@ Ensuite cache mémoire (prix ~30 s, METAR ~2 min, modèles ~15 min, WU ~10 min).
 | HKO open data `rhrread` | Hong Kong Observatory | 5 min | Résolution = Daily Extract, pas le METAR VHHH |
 
 NOAA n’est **pas** un modèle. Les modèles affichés, côte à côte : ECMWF IFS,
-ICON + ICON-D2, ARPEGE + AROME, UKMO, GFS, HRRR, CMA. Hors domaine / hors horizon →
+ICON + ICON-D2, AROME, UKMO, GFS, HRRR, CMA. Hors domaine / hors horizon →
 `n/a`, jamais une valeur interpolée d’un autre modèle.
 
 ## Règles métier

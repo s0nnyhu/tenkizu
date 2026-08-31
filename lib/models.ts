@@ -62,16 +62,6 @@ export const MODELS: ModelDef[] = [
     notes: "NOAA GFS 0.13°",
   },
   {
-    id: "arpege",
-    label: "ARPEGE",
-    group: "primary",
-    openMeteoIds: ["meteofrance_arpege_world"],
-    coverage: "global",
-    cycleHours: 6,
-    lagHours: 4,
-    notes: "Météo-France ARPEGE 0.25°",
-  },
-  {
     id: "ukmo",
     label: "UKMO",
     group: "extra",

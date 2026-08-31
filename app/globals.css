@@ -412,11 +412,21 @@ table.model-table .day {
   left: 0;
   z-index: 2;
   background: #141824;
-  min-width: 72px;
+  min-width: 128px;
 }
 table.model-table tbody th.day { background: var(--bg-elev); }
 .model-table .tmax { font-size: 15px; min-width: 3.4em; }
 .model-table td.na { color: var(--faint); font-style: italic; font-size: 11px; }
+.model-table .gefs {
+  display: block;
+  margin-top: 6px;
+  font-weight: 500;
+}
+.model-table .gefs-mean {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
 .sub { display: block; font-size: 10px; color: var(--faint); font-weight: 400; }
 .beaten { outline: 1px solid var(--red); }
 

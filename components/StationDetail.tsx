@@ -6,6 +6,7 @@ import type { ModelDayValue, StationDay, StationPayload } from "@/lib/types";
 import { findBucket, marketFavorite, truncateTemp } from "@/lib/units";
 import { bucketColor, fmtProb, fmtTemp, relTime, tempToBucketColor } from "@/lib/format";
 import { stationLocalParts } from "@/lib/time";
+import { gfsCycleClock } from "@/lib/gfs-cycle";
 import { BucketBars } from "./BucketBars";
 import { Sparkline } from "./Sparkline";
 import { HourlyTable } from "./HourlyTable";
@@ -79,6 +80,7 @@ export function StationDetail({ icao }: { icao: string }) {
   const last = data.lastMetar;
   const cluster = voteCluster(j);
   const clock = stationLocalParts(st.timezone, now);
+  const gfsCycle = gfsCycleClock(new Date(now));
   const fav = j?.buckets.length ? marketFavorite(j.buckets) : null;
   const favOn = has(st.icao);
 
@@ -109,6 +111,12 @@ export function StationDetail({ icao }: { icao: string }) {
           </button>
           <span className="pill">METAR {data.lastMetar ? `${data.lastMetar.obsAgeMin} min` : "—"}</span>
           <span className="pill">modèles {relTime(data.fetchedAt)}</span>
+          <span
+            className="pill"
+            title={`Prochain cycle NOAA ${gfsCycle.nextLabel} · ${gfsCycle.nextWhen}`}
+          >
+            GFS {gfsCycle.currentLabel} · {gfsCycle.nextLabel} dans {gfsCycle.remain}
+          </span>
         </div>
       </header>
 
@@ -264,6 +272,7 @@ export function StationDetail({ icao }: { icao: string }) {
                 <th className="day">
                   {d.horizon}
                   <span className="sub">{d.localDate}</span>
+                  {cellGefs(d, unit)}
                 </th>
                 <td>{cellWu(d, unit)}</td>
                 {modelIds.map((id) => {
@@ -369,6 +378,23 @@ function voteCluster(day: StationDay | undefined) {
     nTranches: trancheKeys.size,
     ranked: [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0]),
   };
+}
+
+function cellGefs(d: StationDay, unit: string) {
+  const g = d.gefs;
+  if (!g || g.mean == null || g.n === 0) {
+    return <span className="gefs sub">GEFS —</span>;
+  }
+  const delta = g.spread;
+  return (
+    <span className="gefs">
+      <span className="gefs-mean">GEFS {fmtTemp(g.mean, unit, 1)}</span>
+      <span className="sub">
+        {fmtTemp(g.min, unit, 1)}–{fmtTemp(g.max, unit, 1)}
+        {delta == null ? "" : ` · Δ${delta.toFixed(1)}`}
+      </span>
+    </span>
+  );
 }
 
 function cellWu(d: StationDay, unit: string) {
