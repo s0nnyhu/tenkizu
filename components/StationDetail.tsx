@@ -315,7 +315,13 @@ export function StationDetail({ icao }: { icao: string }) {
           return (
             <div className="card" key={d.localDate}>
               <h2>
-                Buckets {d.horizon} {d.market ? "" : "(pas de marché)"}
+                {d.market ? (
+                  <a href={d.market.polymarketUrl} target="_blank" rel="noreferrer">
+                    Buckets {d.horizon}
+                  </a>
+                ) : (
+                  <>Buckets {d.horizon} (pas de marché)</>
+                )}
               </h2>
               {d.buckets.length ? (
                 <BucketBars
