@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --port 3014",
     "build": "next build",
-    "start": "next start --port 3014"
+    "start": "next start --hostname 0.0.0.0 --port 3014"
   },
   "dependencies": {
     "next": "^15.5.2",

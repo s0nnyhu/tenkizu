@@ -1,0 +1,17 @@
+[Unit]
+Description=TenkiZu (Polymarket highest-temperature dashboard)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/tenkizu
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=4
+TimeoutStartSec=60
+# In-memory caches die with the process; Restart=always is enough.
+
+[Install]
+WantedBy=multi-user.target
