@@ -94,7 +94,28 @@ export function Dashboard() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             autoFocus
+            autoComplete="off"
           />
+          {q.trim() && (
+            <section className="search-hits">
+              {loading && !data ? (
+                <div className="search-hits-empty">Recherche… chargement des stations</div>
+              ) : searchHits.length === 0 ? (
+                <div className="search-hits-empty">Aucun résultat pour « {q.trim()} »</div>
+              ) : (
+                searchHits.map((r) => (
+                  <div key={r.icao} className="search-hit">
+                    <button type="button" className="search-hit-main" onClick={() => router.push(`/station/${r.icao}`)}>
+                      <b>{r.city}</b>
+                      <span className="icao">{r.icao}</span>
+                      <span className="faint">{r.stationName}</span>
+                    </button>
+                    <StarButton on={has(r.icao)} onClick={() => toggle(r.icao)} />
+                  </div>
+                ))
+              )}
+            </section>
+          )}
         </div>
         <div className="home-meta">
           {data ? `${data.stationCount} stations · MAJ ${relTime(data.fetchedAt)}` : "Chargement…"}
@@ -124,31 +145,6 @@ export function Dashboard() {
               onToggleFav={() => toggle(r.icao)}
             />
           ))}
-        </section>
-      )}
-
-      {q.trim() && (
-        <section className="search-hits">
-          {loading && !data ? (
-            <div className="muted" style={{ textAlign: "center" }}>
-              Recherche… chargement des stations
-            </div>
-          ) : searchHits.length === 0 ? (
-            <div className="muted" style={{ textAlign: "center" }}>
-              Aucun résultat pour « {q.trim()} »
-            </div>
-          ) : (
-            searchHits.map((r) => (
-              <div key={r.icao} className="search-hit">
-                <button type="button" className="search-hit-main" onClick={() => router.push(`/station/${r.icao}`)}>
-                  <b>{r.city}</b>
-                  <span className="icao">{r.icao}</span>
-                  <span className="faint">{r.stationName}</span>
-                </button>
-                <StarButton on={has(r.icao)} onClick={() => toggle(r.icao)} />
-              </div>
-            ))
-          )}
         </section>
       )}
     </div>

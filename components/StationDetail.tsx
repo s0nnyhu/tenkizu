@@ -48,7 +48,14 @@ export function StationDetail({ icao }: { icao: string }) {
   const modelIds = useMemo(() => {
     if (!data) return [];
     const first = data.days[0]?.models ?? [];
-    return first.map((m) => m.modelId);
+    return first
+      .filter((m) =>
+        data.days.some((d) => {
+          const x = d.models.find((y) => y.modelId === m.modelId);
+          return x && x.status !== "out_of_domain";
+        }),
+      )
+      .map((m) => m.modelId);
   }, [data]);
 
   if (error && !data) {

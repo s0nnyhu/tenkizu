@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { HourlyDayGrid, TempUnit } from "@/lib/types";
 import { tempHeatColor } from "@/lib/format";
+import type { HourlyDayGrid, TempUnit } from "@/lib/types";
+import { useMemo, useState } from "react";
 
 function localHour(timeZone: string): number {
   const h = new Intl.DateTimeFormat("en-GB", {
@@ -22,7 +22,9 @@ export function HourlyTable({
   unit: TempUnit;
   timezone: string;
 }) {
-  const [sel, setSel] = useState(days.find((d) => d.horizon === "J")?.date ?? days[0]?.date ?? "");
+  const [sel, setSel] = useState(
+    days.find((d) => d.horizon === "J")?.date ?? days[0]?.date ?? "",
+  );
   const grid = days.find((d) => d.date === sel) ?? days[0];
   const nowH = grid?.horizon === "J" ? localHour(timezone) : -1;
 
@@ -53,7 +55,8 @@ export function HourlyTable({
         if (v > max) max = v;
       }
     }
-    if (!Number.isFinite(min) || !Number.isFinite(max)) return { min: 0, max: 1 };
+    if (!Number.isFinite(min) || !Number.isFinite(max))
+      return { min: 0, max: 1 };
     return { min, max };
   }, [grid]);
 
@@ -89,59 +92,64 @@ export function HourlyTable({
             </tr>
           </thead>
           <tbody>
-            {grid.rows.map((row) => {
-              const dead =
-                row.status === "out_of_domain" ||
-                row.status === "out_of_horizon" ||
-                row.status === "unavailable" ||
-                row.status === "error";
-              const allNull = row.temps.every((v) => v == null);
-              return (
-                <tr key={row.id} className={row.kind}>
-                  <th className="sticky">
-                    {row.label}
-                    {dead && allNull && (
-                      <span className="sub">
-                        {row.status === "out_of_domain"
-                          ? "hors domaine"
-                          : row.status === "out_of_horizon"
-                            ? "hors horizon"
-                            : row.status === "unavailable"
-                              ? "n/a"
-                              : "erreur"}
-                      </span>
-                    )}
-                  </th>
-                  {row.temps.map((v, i) => {
-                    if (v == null) {
+            {grid.rows
+              .filter((row) => row.status !== "out_of_domain")
+              .map((row) => {
+                const dead =
+                  row.status === "out_of_domain" ||
+                  row.status === "out_of_horizon" ||
+                  row.status === "unavailable" ||
+                  row.status === "error";
+                const allNull = row.temps.every((v) => v == null);
+                return (
+                  <tr key={row.id} className={row.kind}>
+                    <th className="sticky">
+                      {row.label}
+                      {dead && allNull && (
+                        <span className="sub">
+                          {row.status === "out_of_domain"
+                            ? "hors domaine"
+                            : row.status === "out_of_horizon"
+                              ? "hors horizon"
+                              : row.status === "unavailable"
+                                ? "n/a"
+                                : "erreur"}
+                        </span>
+                      )}
+                    </th>
+                    {row.temps.map((v, i) => {
+                      if (v == null) {
+                        return (
+                          <td
+                            key={i}
+                            className={i === nowH ? "now empty" : "empty"}
+                          >
+                            ·
+                          </td>
+                        );
+                      }
+                      const peak = peakIdx[row.id] === i;
+                      const bg = tempHeatColor(v, heatRange.min, heatRange.max);
                       return (
-                        <td key={i} className={i === nowH ? "now empty" : "empty"}>
-                          ·
+                        <td
+                          key={i}
+                          className={`${peak ? "peak" : ""} ${i === nowH ? "now" : ""}`}
+                          style={{ background: bg }}
+                          title={`${row.label} ${grid.hours[i]}h → ${v.toFixed(1)}°${unit}${peak ? " · pic" : ""}`}
+                        >
+                          {v.toFixed(0)}
                         </td>
                       );
-                    }
-                    const peak = peakIdx[row.id] === i;
-                    const bg = tempHeatColor(v, heatRange.min, heatRange.max);
-                    return (
-                      <td
-                        key={i}
-                        className={`${peak ? "peak" : ""} ${i === nowH ? "now" : ""}`}
-                        style={{ background: bg }}
-                        title={`${row.label} ${grid.hours[i]}h → ${v.toFixed(1)}°${unit}${peak ? " · pic" : ""}`}
-                      >
-                        {v.toFixed(0)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
+                    })}
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>
       <p className="hourly-legend">
-        °{unit} · heure locale station · fond = chaleur relative du jour · cadre pêche = Tmax du
-        modèle · colonne marquée = heure actuelle (J)
+        °{unit} · heure locale station · fond = chaleur relative du jour · cadre
+        pêche = Tmax du modèle · colonne marquée = heure actuelle (J)
       </p>
     </div>
   );
