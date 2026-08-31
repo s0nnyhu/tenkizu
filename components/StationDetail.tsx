@@ -186,7 +186,7 @@ export function StationDetail({ icao }: { icao: string }) {
           )}
         </div>
         <div className="card">
-          <h2>Consensus (NWP + WU)</h2>
+          <h2>Consensus (NWP + WU, hors CMA)</h2>
           <div className="hero">
             {fmtTemp(cons?.mean ?? null, unit, 1)}
             <small>méd {fmtTemp(cons?.median ?? null, unit, 1)}</small>
@@ -254,7 +254,7 @@ export function StationDetail({ icao }: { icao: string }) {
               })}
               <th>
                 Consensus
-                <span className="sub">NWP + WU</span>
+                <span className="sub">NWP + WU · hors CMA</span>
               </th>
             </tr>
           </thead>

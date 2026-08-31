@@ -26,7 +26,9 @@ import { MODELS } from "./models";
 import { emptySlots, HOURS_24 } from "./hourly";
 
 function consensusFrom(models: ModelDayValue[], wuTmax: number | null, includeWu: boolean): Consensus {
-  const vals = models.filter((m) => m.status === "ok" && m.tmax != null).map((m) => m.tmax as number);
+  const vals = models
+    .filter((m) => m.modelId !== "cma" && m.status === "ok" && m.tmax != null)
+    .map((m) => m.tmax as number);
   if (includeWu && wuTmax != null) vals.push(wuTmax);
   const c = consensusOf(vals);
   return { ...c, includesWu: includeWu && wuTmax != null };
