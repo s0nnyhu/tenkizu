@@ -65,11 +65,11 @@ export const MODELS: ModelDef[] = [
     id: "arpege",
     label: "ARPEGE",
     group: "primary",
-    openMeteoIds: ["meteofrance_arpege_world"],
+    openMeteoIds: ["meteofrance_seamless"],
     coverage: "global",
     cycleHours: 6,
     lagHours: 4,
-    notes: "Météo-France ARPEGE 0.25°",
+    notes: "Météo-France seamless (AROME si dispo, sinon ARPEGE)",
   },
   {
     id: "ukmo",
