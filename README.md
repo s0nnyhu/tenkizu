@@ -16,8 +16,8 @@ npm run dev
 
 Ouvre [http://localhost:3014](http://localhost:3014).
 
-Premier chargement : 10–40 s (découverte Polymarket + Open-Meteo + METAR).
-Ensuite cache mémoire (prix ~30 s, METAR ~2 min, modèles ~15 min, WU ~10 min).
+Accueil : découverte Polymarket + noms de stations (sans météo). La fiche
+station charge METAR / modèles / WU (10–40 s au premier hit, puis cache).
 
 ## Sources
 
@@ -59,5 +59,5 @@ ICON + ICON-D2, ARPEGE + AROME, UKMO, GFS, HRRR, CMA. Hors domaine / hors horizo
 
 ## API internes
 
-- `GET /api/dashboard` — toutes les lignes
+- `GET /api/dashboard` — index des stations (ville / ICAO), sans météo
 - `GET /api/station/:icao` — détail J / J+1 / J+2 + profil horaire

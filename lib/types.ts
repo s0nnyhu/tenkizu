@@ -139,6 +139,13 @@ export type HourlyDayGrid = {
   rows: HourlyRow[];
 };
 
+export type StationIndexItem = {
+  icao: string;
+  city: string;
+  stationName: string;
+  country: string;
+};
+
 export type DashboardRow = {
   slug: string;
   eventId: string;

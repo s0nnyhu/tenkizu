@@ -2,32 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { DashboardRow } from "@/lib/types";
-import { fmtProb, fmtTemp, relTime, tempToBucketColor } from "@/lib/format";
-import { stationLocalParts } from "@/lib/time";
+import type { StationIndexItem } from "@/lib/types";
+import { relTime } from "@/lib/format";
 import { useFavorites } from "@/lib/favorites";
 
 type Payload = {
-  rows: DashboardRow[];
+  stations: StationIndexItem[];
   fetchedAt: string;
   marketCount: number;
   stationCount: number;
   error?: string;
 };
-
-function pickStationRow(rows: DashboardRow[]): DashboardRow | null {
-  return rows.find((r) => r.horizon === "J") ?? rows[0] ?? null;
-}
-
-function uniqueStations(rows: DashboardRow[]): DashboardRow[] {
-  const by = new Map<string, DashboardRow[]>();
-  for (const r of rows) {
-    const list = by.get(r.icao) ?? [];
-    list.push(r);
-    by.set(r.icao, list);
-  }
-  return [...by.values()].map((list) => pickStationRow(list)!).filter(Boolean);
-}
 
 export function Dashboard() {
   const router = useRouter();
@@ -36,7 +21,6 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [now, setNow] = useState(() => Date.now());
 
   async function load() {
     try {
@@ -54,16 +38,11 @@ export function Dashboard() {
 
   useEffect(() => {
     void load();
-    const id = setInterval(() => void load(), 30_000);
+    const id = setInterval(() => void load(), 60_000);
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const stations = useMemo(() => uniqueStations(data?.rows ?? []), [data]);
+  const stations = data?.stations ?? [];
 
   const favoriteRows = useMemo(() => {
     const set = new Set(favs);
@@ -77,7 +56,8 @@ export function Dashboard() {
       (r) =>
         r.city.toLowerCase().includes(s) ||
         r.icao.toLowerCase().includes(s) ||
-        r.stationName.toLowerCase().includes(s),
+        r.stationName.toLowerCase().includes(s) ||
+        r.country.toLowerCase().includes(s),
     );
   }, [stations, q]);
 
@@ -118,7 +98,7 @@ export function Dashboard() {
           )}
         </div>
         <div className="home-meta">
-          {data ? `${data.stationCount} stations · MAJ ${relTime(data.fetchedAt)}` : "Chargement…"}
+          {data ? `${data.stationCount} stations · MAJ ${relTime(data.fetchedAt)}` : "Chargement des stations…"}
         </div>
       </header>
 
@@ -136,14 +116,24 @@ export function Dashboard() {
       {ready && favoriteRows.length > 0 && (
         <section className="fav-grid">
           {favoriteRows.map((r) => (
-            <StationTile
+            <article
               key={r.icao}
-              row={r}
-              now={now}
-              favorited
-              onOpen={() => router.push(`/station/${r.icao}`)}
-              onToggleFav={() => toggle(r.icao)}
-            />
+              className="card fav-tile"
+              onClick={() => router.push(`/station/${r.icao}`)}
+            >
+              <div className="fav-tile-head">
+                <div>
+                  <h2>
+                    {r.city} <span className="icao">{r.icao}</span>
+                  </h2>
+                  <div className="muted">
+                    {r.stationName}
+                    {r.country ? ` · ${r.country}` : ""}
+                  </div>
+                </div>
+                <StarButton on={has(r.icao)} onClick={() => toggle(r.icao)} />
+              </div>
+            </article>
           ))}
         </section>
       )}
@@ -164,68 +154,5 @@ function StarButton({ on, onClick }: { on: boolean; onClick: () => void }) {
     >
       {on ? "★" : "☆"}
     </button>
-  );
-}
-
-function StationTile({
-  row,
-  now,
-  favorited,
-  onOpen,
-  onToggleFav,
-}: {
-  row: DashboardRow;
-  now: number;
-  favorited: boolean;
-  onOpen: () => void;
-  onToggleFav: () => void;
-}) {
-  const clock = stationLocalParts(row.timezone, now);
-  return (
-    <article className="card fav-tile" onClick={onOpen}>
-      <div className="fav-tile-head">
-        <div>
-          <h2>
-            {row.city} <span className="icao">{row.icao}</span>
-          </h2>
-          <div className="muted">
-            {clock.hm} · {row.timezone}
-          </div>
-        </div>
-        <StarButton on={favorited} onClick={onToggleFav} />
-      </div>
-      <div className="fav-tile-stats">
-        <div>
-          <span className="faint">METAR</span>
-          <span
-            className="tmax"
-            style={{
-              background: tempToBucketColor(
-                row.buckets,
-                row.lastMetar?.tempMarket == null ? null : Math.trunc(row.lastMetar.tempMarket),
-              ),
-            }}
-          >
-            {fmtTemp(row.lastMetar?.tempMarket ?? null, row.unit, 1)}
-          </span>
-        </div>
-        <div>
-          <span className="faint">Cons.</span>
-          <span
-            className="tmax"
-            style={{ background: tempToBucketColor(row.buckets, row.consensus.meanTrunc) }}
-          >
-            {fmtTemp(row.consensus.mean, row.unit, 1)}
-          </span>
-        </div>
-        <div>
-          <span className="faint">Mkt</span>
-          <span className="num">
-            {row.marketFavoriteBucket ?? "—"}{" "}
-            {fmtProb(row.buckets.find((b) => b.label === row.marketFavoriteBucket)?.yesPrice ?? null)}
-          </span>
-        </div>
-      </div>
-    </article>
   );
 }

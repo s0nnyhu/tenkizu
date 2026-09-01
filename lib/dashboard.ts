@@ -1,26 +1,25 @@
 import { fetchHko } from "./hko";
 import { fetchObsForStations, metarRawUrl, type StationObsBundle } from "./metar";
 import { fetchGefsDaily } from "./gefs";
-import { fetchModelsForStation, fetchModelsForStations } from "./openmeteo";
+import { fetchModelsForStation } from "./openmeteo";
 import { fillWuHourlyUrl } from "./parse";
 import { discoverHighestTempEvents } from "./polymarket";
 import { resolveStation } from "./stations";
 import { addDaysISO, horizonFor, todayISO } from "./time";
 import type {
   Consensus,
-  DashboardRow,
   HourlyDayGrid,
   HourlyRow,
-  MarketStatus,
   ModelDayValue,
   ParsedEvent,
   SourceError,
+  StationIndexItem,
   StationMeta,
   StationPayload,
   TempUnit,
 } from "./types";
 import { consensusOf, findBucket, marketFavorite, truncateTemp } from "./units";
-import { fetchWundergroundStation, type WuStation } from "./wunderground";
+import { fetchWundergroundStation } from "./wunderground";
 import { fetchWxOutlook } from "./wx";
 import { mapPool } from "./http";
 import { MODELS } from "./models";
@@ -33,13 +32,6 @@ function consensusFrom(models: ModelDayValue[], wuTmax: number | null, includeWu
   if (includeWu && wuTmax != null) vals.push(wuTmax);
   const c = consensusOf(vals);
   return { ...c, includesWu: includeWu && wuTmax != null };
-}
-
-function marketStatus(event: ParsedEvent, horizon: DashboardRow["horizon"], dailyFinalized: boolean): MarketStatus {
-  if (event.closed) return "resolved";
-  if (horizon === "past") return dailyFinalized ? "awaiting_daily" : "awaiting_daily";
-  if (horizon === "later") return "upcoming";
-  return "live";
 }
 
 async function stationsFor(events: ParsedEvent[]): Promise<Map<string, StationMeta>> {
@@ -62,195 +54,31 @@ async function stationsFor(events: ParsedEvent[]): Promise<Map<string, StationMe
   return map;
 }
 
-export async function buildDashboard(): Promise<{
-  rows: DashboardRow[];
+export async function buildStationIndex(): Promise<{
+  stations: StationIndexItem[];
   fetchedAt: string;
   marketCount: number;
   stationCount: number;
 }> {
   const events = await discoverHighestTempEvents();
   const stationMap = await stationsFor(events);
-  const withStation = events.filter((e) => stationMap.has(e.icao));
-
-  const unitByIcao: Record<string, TempUnit> = {};
-  for (const e of withStation) unitByIcao[e.icao] = e.unit;
-
-  const stationList = [...stationMap.values()].map((s) => ({
-    icao: s.icao,
-    metarIcao: s.metarIcao,
-    timezone: s.timezone,
-  }));
-
-  const obs = await fetchObsForStations(stationList, unitByIcao);
-
-  const modelInputs = [...stationMap.values()].map((s) => {
-    const today = todayISO(s.timezone);
-    const dates = [addDaysISO(today, -1), today, addDaysISO(today, 1), addDaysISO(today, 2)];
-    const running = obs[s.icao]?.byDate[today]?.runningMaxMarket ?? null;
-    const unit = unitByIcao[s.icao] ?? "C";
-    return {
-      icao: s.icao,
-      lat: s.lat,
-      lon: s.lon,
-      timezone: s.timezone,
-      unit,
-      dates,
-      today,
-      runningMaxJ: running,
-    };
-  });
-
-  const models = await fetchModelsForStations(modelInputs);
-
-  let hkoLast = null as Awaited<ReturnType<typeof fetchHko>> | null;
-  if (stationMap.has("HKO")) {
-    hkoLast = await fetchHko(unitByIcao.HKO ?? "C");
-  }
-
-  const wuByIcao: Record<string, WuStation> = {};
-  await mapPool([...stationMap.values()], 6, async (s) => {
-    wuByIcao[s.icao] = await fetchWundergroundStation({
-      icao: s.icao,
-      metarIcao: s.metarIcao,
-      unit: unitByIcao[s.icao] ?? "C",
-    });
-  });
-
-  const rows: DashboardRow[] = [];
-  for (const event of events) {
-    const st = stationMap.get(event.icao);
-    const errors: SourceError[] = [];
-    if (!st) {
-      errors.push({ source: "station", message: `ICAO ${event.icao} non résolu` });
-      rows.push(rowFromPartial(event, errors));
-      continue;
-    }
-    const today = todayISO(st.timezone);
-    const horizon = horizonFor(event.localDate, today);
-    const bundle: StationObsBundle | undefined = obs[event.icao];
-    let last = bundle?.last ?? null;
-    let daily = bundle?.byDate[event.localDate] ?? null;
-    if (event.icao === "HKO" && hkoLast) {
-      if (hkoLast.error) errors.push({ source: "HKO", message: hkoLast.error });
-      if (hkoLast.last) last = hkoLast.last;
-      if (hkoLast.daily && hkoLast.daily.date === event.localDate) daily = hkoLast.daily;
-    }
-    const modelPack = models[event.icao];
-    if (modelPack?.error) errors.push({ source: "Open-Meteo", message: modelPack.error });
-    const dayModels = modelPack?.days[event.localDate] ?? [];
-
-    const hourlyUrl = fillWuHourlyUrl(event.wuHourlyUrlTemplate, event.localDate);
-    const historyUrl = event.wuHistoryUrl
-      ? `${event.wuHistoryUrl.replace(/\/$/, "")}/date/${event.localDate}`
-      : null;
-    const wuPack = wuByIcao[event.icao];
-    const wuDay = wuPack?.byDate[event.localDate];
-    if (wuPack?.error) errors.push({ source: "Wunderground", message: wuPack.error });
-
-    const runningMax = daily?.runningMaxMarket ?? null;
-    const wuForecast = wuDay?.forecastTmax ?? null;
-    const consensus = consensusFrom(dayModels, wuForecast, true);
-    const consensusBucket = findBucket(event.buckets, consensus.meanTrunc);
-    const wuBucket = findBucket(event.buckets, wuForecast == null ? null : truncateTemp(wuForecast));
-    const runningBucket = findBucket(event.buckets, runningMax == null ? null : truncateTemp(runningMax));
-    const mktFav = marketFavorite(event.buckets);
-
-    rows.push({
-      slug: event.slug,
-      eventId: event.eventId,
-      city: event.city,
-      icao: event.icao,
-      metarIcao: event.metarIcao,
-      localDate: event.localDate,
-      horizon,
-      unit: event.unit,
-      timezone: st.timezone,
-      country: st.country,
-      region: st.region,
-      volume: event.volume,
-      status: marketStatus(event, horizon, Boolean(daily?.finalized)),
-      polymarketUrl: event.polymarketUrl,
-      resolutionKind: event.resolutionKind,
-      resolutionUrl: event.resolutionUrl,
-      wuHistoryUrl: historyUrl,
-      wuHourlyUrl: hourlyUrl,
-      metarRawUrl: metarRawUrl(event.metarIcao),
-      stationName: st.name,
-      lat: st.lat,
-      lon: st.lon,
-      lastMetar: last,
-      runningMax,
-      runningMaxFinalized: Boolean(daily?.finalized),
-      wuForecastTmax: wuForecast,
-      wuForecastTmaxTrunc: wuForecast == null ? null : truncateTemp(wuForecast),
-      wuDailyTmax: wuDay?.dailyTmax ?? null,
-      wuDailyStatus: wuDay?.dailyStatus ?? "missing",
-      consensus,
-      favoriteBucket: consensusBucket?.label ?? null,
-      consensusBucket: consensusBucket?.label ?? null,
-      wuBucket: wuBucket?.label ?? null,
-      runningMaxBucket: runningBucket?.label ?? null,
-      marketFavoriteBucket: mktFav?.label ?? null,
-      buckets: event.buckets,
-      models: dayModels,
-      errors,
-      metarAgeMin: last?.obsAgeMin ?? null,
-      wuFetchedAt: wuPack?.fetchedAt ?? null,
-      modelsFetchedAt: modelPack?.fetchedAt ?? null,
+  const byIcao = new Map<string, StationIndexItem>();
+  for (const e of events) {
+    if (!e.icao || byIcao.has(e.icao)) continue;
+    const st = stationMap.get(e.icao);
+    byIcao.set(e.icao, {
+      icao: e.icao,
+      city: e.city,
+      stationName: st?.name ?? e.icao,
+      country: st?.country ?? "",
     });
   }
-
+  const stations = [...byIcao.values()].sort((a, b) => a.city.localeCompare(b.city, "fr"));
   return {
-    rows,
+    stations,
     fetchedAt: new Date().toISOString(),
     marketCount: events.length,
-    stationCount: stationMap.size,
-  };
-}
-
-function rowFromPartial(event: ParsedEvent, errors: SourceError[]): DashboardRow {
-  return {
-    slug: event.slug,
-    eventId: event.eventId,
-    city: event.city,
-    icao: event.icao,
-    metarIcao: event.metarIcao,
-    localDate: event.localDate,
-    horizon: "later",
-    unit: event.unit,
-    timezone: "UTC",
-    country: "",
-    region: "Autre",
-    volume: event.volume,
-    status: event.closed ? "resolved" : "upcoming",
-    polymarketUrl: event.polymarketUrl,
-    resolutionKind: event.resolutionKind,
-    resolutionUrl: event.resolutionUrl,
-    wuHistoryUrl: event.wuHistoryUrl,
-    wuHourlyUrl: fillWuHourlyUrl(event.wuHourlyUrlTemplate, event.localDate),
-    metarRawUrl: metarRawUrl(event.metarIcao),
-    stationName: event.icao,
-    lat: 0,
-    lon: 0,
-    lastMetar: null,
-    runningMax: null,
-    runningMaxFinalized: false,
-    wuForecastTmax: null,
-    wuForecastTmaxTrunc: null,
-    wuDailyTmax: null,
-    wuDailyStatus: "missing",
-    consensus: { mean: null, median: null, min: null, max: null, n: 0, meanTrunc: null, includesWu: false },
-    favoriteBucket: null,
-    consensusBucket: null,
-    wuBucket: null,
-    runningMaxBucket: null,
-    marketFavoriteBucket: marketFavorite(event.buckets)?.label ?? null,
-    buckets: event.buckets,
-    models: [],
-    errors,
-    metarAgeMin: null,
-    wuFetchedAt: null,
-    modelsFetchedAt: null,
+    stationCount: stations.length,
   };
 }
 
