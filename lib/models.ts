@@ -52,6 +52,16 @@ export const MODELS: ModelDef[] = [
     notes: "Météo-France AROME France",
   },
   {
+    id: "harmonie",
+    label: "HARMONIE",
+    group: "extra",
+    openMeteoIds: ["knmi_harmonie_arome_netherlands", "knmi_harmonie_arome_europe"],
+    coverage: "regional",
+    cycleHours: 1,
+    lagHours: 1,
+    notes: "KNMI HARMONIE-AROME NL 2 km si dispo, sinon Europe 5.5 km",
+  },
+  {
     id: "gfs",
     label: "GFS",
     group: "primary",

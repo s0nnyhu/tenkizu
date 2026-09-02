@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import type { HourlyDayGrid } from "@/lib/types";
+import { useState } from "react";
 
 const COLORS: Record<string, string> = {
   metar: "#5ee9a8",
@@ -10,6 +10,7 @@ const COLORS: Record<string, string> = {
   icon: "#c084fc",
   icon_d2: "#a78bfa",
   arome: "#f472b6",
+  harmonie: "#34d399",
   arpege: "#fb7185",
   ukmo: "#38bdf8",
   gfs: "#6ea8ff",
@@ -21,10 +22,18 @@ function colorFor(id: string, i: number): string {
   return COLORS[id] ?? `hsl(${(i * 47) % 360} 58% 58%)`;
 }
 
-export function Sparkline({ grid, unit }: { grid: HourlyDayGrid | undefined; unit: string }) {
+export function Sparkline({
+  grid,
+  unit,
+}: {
+  grid: HourlyDayGrid | undefined;
+  unit: string;
+}) {
   const [hover, setHover] = useState<number | null>(null);
   const rows = (grid?.rows ?? []).filter((r) => r.temps.some((v) => v != null));
-  const vals = rows.flatMap((r) => r.temps).filter((v): v is number => v != null);
+  const vals = rows
+    .flatMap((r) => r.temps)
+    .filter((v): v is number => v != null);
   if (!grid || !rows.length || !vals.length) {
     return <div className="muted">Pas encore de série horaire pour J.</div>;
   }
@@ -35,8 +44,10 @@ export function Sparkline({ grid, unit }: { grid: HourlyDayGrid | undefined; uni
   const n = grid.hours.length;
   const min = Math.min(...vals) - 1;
   const max = Math.max(...vals) + 1;
-  const x = (i: number) => pad.l + (i * (w - pad.l - pad.r)) / Math.max(1, n - 1);
-  const y = (v: number) => pad.t + ((max - v) * (h - pad.t - pad.b)) / (max - min || 1);
+  const x = (i: number) =>
+    pad.l + (i * (w - pad.l - pad.r)) / Math.max(1, n - 1);
+  const y = (v: number) =>
+    pad.t + ((max - v) * (h - pad.t - pad.b)) / (max - min || 1);
 
   function pathFrom(temps: Array<number | null>): string {
     const d: string[] = [];
@@ -79,13 +90,18 @@ export function Sparkline({ grid, unit }: { grid: HourlyDayGrid | undefined; uni
         viewBox={`0 0 ${w} ${h}`}
         role="img"
         aria-label="Profil horaire J"
-        onMouseMove={(e) => setHover(hourFromClientX(e.currentTarget, e.clientX))}
+        onMouseMove={(e) =>
+          setHover(hourFromClientX(e.currentTarget, e.clientX))
+        }
         onMouseLeave={() => setHover(null)}
       >
         {rows.map((row, i) => {
           const stroke = colorFor(row.id, i);
           const dashed = row.kind === "wu" ? "4 3" : undefined;
-          const width = row.id === "ecmwf_ifs" || row.id === "icon" || row.kind === "metar" ? 1.8 : 1.25;
+          const width =
+            row.id === "ecmwf_ifs" || row.id === "icon" || row.kind === "metar"
+              ? 1.8
+              : 1.25;
           return (
             <path
               key={row.id}
@@ -102,7 +118,13 @@ export function Sparkline({ grid, unit }: { grid: HourlyDayGrid | undefined; uni
           .find((r) => r.kind === "metar")
           ?.temps.map((v, i) =>
             v == null ? null : (
-              <circle key={`m${i}`} cx={x(i)} cy={y(v)} r="2.3" fill={COLORS.metar} />
+              <circle
+                key={`m${i}`}
+                cx={x(i)}
+                cy={y(v)}
+                r="2.3"
+                fill={COLORS.metar}
+              />
             ),
           )}
         {hover != null && (
@@ -118,7 +140,15 @@ export function Sparkline({ grid, unit }: { grid: HourlyDayGrid | undefined; uni
             {rows.map((row, i) => {
               const v = row.temps[hover];
               if (v == null) return null;
-              return <circle key={`h${row.id}`} cx={x(hover)} cy={y(v)} r="3.2" fill={colorFor(row.id, i)} />;
+              return (
+                <circle
+                  key={`h${row.id}`}
+                  cx={x(hover)}
+                  cy={y(v)}
+                  r="3.2"
+                  fill={colorFor(row.id, i)}
+                />
+              );
             })}
           </>
         )}
@@ -134,9 +164,7 @@ export function Sparkline({ grid, unit }: { grid: HourlyDayGrid | undefined; uni
           className={`spark-tip ${hover > 14 ? "left" : "right"}`}
           style={{ left: `${(x(hover) / w) * 100}%` }}
         >
-          <b>
-            {grid.hours[hover]}h locale
-          </b>
+          <b>{grid.hours[hover]}h locale</b>
           {tipRows.map((r) => (
             <div key={r.id}>
               <i style={{ background: r.color }} />
@@ -155,7 +183,9 @@ export function Sparkline({ grid, unit }: { grid: HourlyDayGrid | undefined; uni
             {row.label}
           </span>
         ))}
-        <span className="faint">°{unit} · J · trait pointillé = WU · survol = T° à l’heure</span>
+        <span className="faint">
+          °{unit} · J · trait pointillé = WU · survol = T° à l’heure
+        </span>
       </div>
     </div>
   );
