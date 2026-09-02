@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { StationIndexItem } from "@/lib/types";
-import { relTime } from "@/lib/format";
+import { fmtTemp, relTime } from "@/lib/format";
+import { toMarketUnit } from "@/lib/units";
 import { useFavorites } from "@/lib/favorites";
 
 type Payload = {
@@ -14,6 +15,12 @@ type Payload = {
   error?: string;
 };
 
+type LatestMetar = {
+  tempC: number | null;
+  obsAgeMin: number | null;
+  raw: string | null;
+};
+
 export function Dashboard() {
   const router = useRouter();
   const { favs, ready, has, toggle } = useFavorites();
@@ -21,6 +28,7 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [metars, setMetars] = useState<Record<string, LatestMetar>>({});
 
   async function load() {
     try {
@@ -48,6 +56,35 @@ export function Dashboard() {
     const set = new Set(favs);
     return stations.filter((r) => set.has(r.icao));
   }, [stations, favs]);
+
+  const favMetarIds = useMemo(
+    () => [...new Set(favoriteRows.map((r) => r.metarIcao || r.icao))],
+    [favoriteRows],
+  );
+
+  useEffect(() => {
+    if (!favMetarIds.length) {
+      setMetars({});
+      return;
+    }
+    let cancelled = false;
+    async function loadMetars() {
+      try {
+        const res = await fetch(`/api/metar/latest?ids=${favMetarIds.join(",")}`, { cache: "no-store" });
+        const json = (await res.json()) as { byIcao?: Record<string, LatestMetar> };
+        if (!res.ok || cancelled) return;
+        setMetars(json.byIcao ?? {});
+      } catch {
+        /* keep last */
+      }
+    }
+    void loadMetars();
+    const id = setInterval(() => void loadMetars(), 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [favMetarIds.join(",")]);
 
   const searchHits = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -115,26 +152,37 @@ export function Dashboard() {
 
       {ready && favoriteRows.length > 0 && (
         <section className="fav-grid">
-          {favoriteRows.map((r) => (
-            <article
-              key={r.icao}
-              className="card fav-tile"
-              onClick={() => router.push(`/station/${r.icao}`)}
-            >
-              <div className="fav-tile-head">
-                <div>
-                  <h2>
-                    {r.city} <span className="icao">{r.icao}</span>
-                  </h2>
-                  <div className="muted">
-                    {r.stationName}
-                    {r.country ? ` · ${r.country}` : ""}
+          {favoriteRows.map((r) => {
+            const m = metars[r.metarIcao || r.icao];
+            const temp = m?.tempC == null ? null : toMarketUnit(m.tempC, r.unit);
+            return (
+              <article
+                key={r.icao}
+                className="card fav-tile"
+                onClick={() => router.push(`/station/${r.icao}`)}
+              >
+                <div className="fav-tile-head">
+                  <div>
+                    <h2>
+                      {r.city} <span className="icao">{r.icao}</span>
+                    </h2>
+                    <div className="muted">
+                      {r.stationName}
+                      {r.country ? ` · ${r.country}` : ""}
+                    </div>
                   </div>
+                  <StarButton on={has(r.icao)} onClick={() => toggle(r.icao)} />
                 </div>
-                <StarButton on={has(r.icao)} onClick={() => toggle(r.icao)} />
-              </div>
-            </article>
-          ))}
+                <div className="fav-tile-metar" title={m?.raw ?? undefined}>
+                  <span className="tmax">{fmtTemp(temp, r.unit, 1)}</span>
+                  <span className="faint">
+                    METAR
+                    {m?.obsAgeMin != null ? ` · ${m.obsAgeMin} min` : ""}
+                  </span>
+                </div>
+              </article>
+            );
+          })}
         </section>
       )}
     </div>

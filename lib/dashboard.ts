@@ -68,9 +68,11 @@ export async function buildStationIndex(): Promise<{
     const st = stationMap.get(e.icao);
     byIcao.set(e.icao, {
       icao: e.icao,
+      metarIcao: e.metarIcao || e.icao,
       city: e.city,
       stationName: st?.name ?? e.icao,
       country: st?.country ?? "",
+      unit: e.unit,
     });
   }
   const stations = [...byIcao.values()].sort((a, b) => a.city.localeCompare(b.city, "fr"));

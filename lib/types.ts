@@ -141,9 +141,11 @@ export type HourlyDayGrid = {
 
 export type StationIndexItem = {
   icao: string;
+  metarIcao: string;
   city: string;
   stationName: string;
   country: string;
+  unit: TempUnit;
 };
 
 export type DashboardRow = {
