@@ -362,9 +362,9 @@ export function StationDetail({ icao }: { icao: string }) {
 function voteCluster(day: StationDay | undefined) {
   const votes: number[] = [];
   for (const m of day?.models ?? []) {
-    if (m.status === "ok" && m.tmaxTrunc != null) votes.push(m.tmaxTrunc);
+    if (m.status === "ok" && m.tmax != null) votes.push(Math.round(m.tmax));
   }
-  if (day?.wuForecastTmax != null) votes.push(truncateTemp(day.wuForecastTmax));
+  if (day?.wuForecastTmax != null) votes.push(Math.round(day.wuForecastTmax));
 
   const counts = new Map<number, number>();
   for (const t of votes) counts.set(t, (counts.get(t) ?? 0) + 1);
