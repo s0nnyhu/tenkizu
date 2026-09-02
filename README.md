@@ -3,9 +3,10 @@
 Application **read-only** pour suivre les marchés Polymarket actifs du type
 « Highest temperature in {ville} on {date} ».
 
-Les stations, unités, buckets et URLs de résolution sont extraits de la
-**description officielle** de chaque événement (Gamma API). Aucune liste de
-villes n’est hardcodée.
+Les unités, buckets et URLs de résolution sont extraits de la **description
+officielle** de chaque événement (Gamma API). L’accueil utilise une liste
+statique de villes (`lib/cities.ts`) ; la météo n’est chargée que sur la fiche
+station.
 
 ## Lancer
 
@@ -16,8 +17,8 @@ npm run dev
 
 Ouvre [http://localhost:3014](http://localhost:3014).
 
-Accueil : découverte Polymarket + noms de stations (sans météo). La fiche
-station charge METAR / modèles / WU (10–40 s au premier hit, puis cache).
+Accueil : liste statique, aucun fetch. La fiche station charge Polymarket +
+METAR / modèles / WU.
 
 ## Sources
 
