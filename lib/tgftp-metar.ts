@@ -1,4 +1,6 @@
 import { fetchJson, fetchText, HttpError, mapPool } from "./http";
+import type { MetarSnapshot, TempUnit } from "./types";
+import { toMarketUnit } from "./units";
 
 export type LatestMetar = {
   icao: string;
@@ -8,6 +10,10 @@ export type LatestMetar = {
   obsAgeMin: number | null;
   source: "tgftp" | "aviationweather" | null;
 };
+
+export function tgftpMetarUrl(icao: string): string {
+  return `https://tgftp.nws.noaa.gov/data/observations/metar/stations/${icao}.TXT`;
+}
 
 /** Prefer RMK Txxxx (0.1 °C), else the TT/Td group. */
 export function parseMetarTempC(raw: string): number | null {
@@ -34,8 +40,46 @@ function ageMin(iso: string | null, now: number): number | null {
   return Math.max(0, Math.round((now - t) / 60_000));
 }
 
+function parseMetarWind(raw: string | null): { dir: number | null; kt: number | null } {
+  if (!raw) return { dir: null, kt: null };
+  const m = raw.match(/\s(VRB|\d{3})(\d{2,3})(?:G(\d{2,3}))?KT\b/);
+  if (!m) return { dir: null, kt: null };
+  return {
+    dir: m[1] === "VRB" ? null : Number(m[1]),
+    kt: Number(m[2]),
+  };
+}
+
+/** Visibility / weather / clouds between the wind group and TT/Td. */
+export function parseMetarWx(raw: string | null): string | null {
+  if (!raw) return null;
+  const withoutTemp = raw.replace(/\sM?\d{2}\/(?:M?\d{2}|\/\/).*$/, "").trim();
+  const afterWind = withoutTemp
+    .replace(/^[A-Z0-9]{3,4}\s+\d{6}Z\s+(?:AUTO\s+|COR\s+)*/, "")
+    .replace(/^(?:VRB|\d{3})\d{2,3}(?:G\d{2,3})?KT(?:\s+\d{3}V\d{3})?\s*/, "")
+    .trim();
+  return afterWind || null;
+}
+
+export function toMetarSnapshot(hit: LatestMetar | undefined, unit: TempUnit): MetarSnapshot | null {
+  if (!hit || (hit.tempC == null && !hit.raw)) return null;
+  const wind = parseMetarWind(hit.raw);
+  return {
+    icao: hit.icao,
+    obsTimeIso: hit.obsTimeIso ?? "",
+    obsAgeMin: hit.obsAgeMin ?? 999,
+    tempC: hit.tempC,
+    tempMarket: hit.tempC == null ? null : toMarketUnit(hit.tempC, unit),
+    windDir: wind.dir,
+    windKt: wind.kt,
+    wx: parseMetarWx(hit.raw) ?? hit.raw,
+    raw: hit.raw,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
 async function fromTgftp(icao: string, now: number): Promise<LatestMetar> {
-  const url = `https://tgftp.nws.noaa.gov/data/observations/metar/stations/${icao}.TXT`;
+  const url = tgftpMetarUrl(icao);
   const text = await fetchText(url, { timeoutMs: 8_000, accept: "text/plain" });
   const lines = text
     .split(/\r?\n/)
@@ -76,7 +120,7 @@ async function fromAviationWeather(icao: string, now: number): Promise<LatestMet
   };
 }
 
-async function fetchOne(icao: string): Promise<LatestMetar> {
+export async function fetchLatestMetar(icao: string): Promise<LatestMetar> {
   const now = Date.now();
   try {
     const hit = await fromTgftp(icao, now);
@@ -95,7 +139,7 @@ export async function fetchLatestMetars(icaos: string[]): Promise<Record<string,
   const ids = [...new Set(icaos.map((s) => s.trim().toUpperCase()).filter((s) => /^[A-Z0-9]{3,4}$/.test(s)))].slice(0, 16);
   const out: Record<string, LatestMetar> = {};
   await mapPool(ids, 6, async (icao) => {
-    out[icao] = await fetchOne(icao);
+    out[icao] = await fetchLatestMetar(icao);
   });
   return out;
 }

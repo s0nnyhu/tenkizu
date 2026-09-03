@@ -4,13 +4,14 @@ export type ResolutionKind = "noaa_wrh" | "wunderground" | "hko" | "other";
 
 export type Horizon = "J" | "J+1" | "J+2" | "past" | "later";
 
-export type MarketStatus =
-  | "live"
-  | "awaiting_daily"
-  | "resolved"
-  | "upcoming";
+export type MarketStatus = "live" | "awaiting_daily" | "resolved" | "upcoming";
 
-export type ModelStatus = "ok" | "out_of_domain" | "out_of_horizon" | "unavailable" | "error";
+export type ModelStatus =
+  | "ok"
+  | "out_of_domain"
+  | "out_of_horizon"
+  | "unavailable"
+  | "error";
 
 export type Bucket = {
   id: string;
@@ -216,11 +217,24 @@ export type WxOutlook = {
   summary: string;
 };
 
+export type PwsReading = {
+  id: string;
+  source: string;
+  url: string;
+  name: string | null;
+  tempC: number | null;
+  tempMarket: number | null;
+  obsTimeIso: string | null;
+  status: "ok" | "error";
+  error?: string;
+};
+
 export type StationPayload = {
   station: StationMeta;
   unit: TempUnit;
   days: StationDay[];
   lastMetar: MetarSnapshot | null;
+  pws: PwsReading[];
   wxOutlook: WxOutlook | null;
   hourlyJ: HourlyPoint[];
   hourlyDays: HourlyDayGrid[];

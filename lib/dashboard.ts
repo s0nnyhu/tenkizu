@@ -1,5 +1,6 @@
 import { fetchHko } from "./hko";
-import { fetchObsForStations, metarRawUrl, type StationObsBundle } from "./metar";
+import { fetchObsForStations } from "./metar";
+import { fetchLatestMetar, tgftpMetarUrl, toMetarSnapshot } from "./tgftp-metar";
 import { fetchGefsDaily } from "./gefs";
 import { fetchModelsForStation } from "./openmeteo";
 import { fillWuHourlyUrl } from "./parse";
@@ -24,6 +25,7 @@ import { fetchWxOutlook } from "./wx";
 import { mapPool } from "./http";
 import { MODELS } from "./models";
 import { emptySlots, HOURS_24 } from "./hourly";
+import { fetchPwsForIcao } from "./pws";
 
 function consensusFrom(models: ModelDayValue[], wuTmax: number | null, includeWu: boolean): Consensus {
   const vals = models
@@ -96,12 +98,15 @@ export async function buildStation(icaoParam: string): Promise<StationPayload> {
   const dates = [today, addDaysISO(today, 1), addDaysISO(today, 2)];
   const unit = primary.unit;
 
-  const obs = await fetchObsForStations(
-    [{ icao: station.icao, metarIcao: station.metarIcao, timezone: station.timezone }],
-    { [station.icao]: unit },
-  );
+  const [obs, tgftpLatest] = await Promise.all([
+    fetchObsForStations(
+      [{ icao: station.icao, metarIcao: station.metarIcao, timezone: station.timezone }],
+      { [station.icao]: unit },
+    ),
+    icao === "HKO" ? Promise.resolve(null) : fetchLatestMetar(station.metarIcao),
+  ]);
   const bundle = obs[station.icao];
-  let last = bundle?.last ?? null;
+  let last = toMetarSnapshot(tgftpLatest ?? undefined, unit) ?? bundle?.last ?? null;
   const errors: SourceError[] = [];
 
   if (icao === "HKO") {
@@ -111,7 +116,7 @@ export async function buildStation(icaoParam: string): Promise<StationPayload> {
   }
 
   const runningJ = bundle?.byDate[today]?.runningMaxMarket ?? null;
-  const [modelPack, wuPack, wxOutlook, gefsPack] = await Promise.all([
+  const [modelPack, wuPack, wxOutlook, gefsPack, pws] = await Promise.all([
     fetchModelsForStation({
       icao: station.icao,
       lat: station.lat,
@@ -142,10 +147,16 @@ export async function buildStation(icaoParam: string): Promise<StationPayload> {
       unit,
       dates,
     }),
+    fetchPwsForIcao(station.icao, unit),
   ]);
   if (modelPack.error) errors.push({ source: "Open-Meteo", message: modelPack.error });
   if (wuPack.error) errors.push({ source: "Wunderground", message: wuPack.error });
   if (gefsPack.error) errors.push({ source: "GEFS", message: gefsPack.error });
+  for (const row of pws) {
+    if (row.status === "error" && row.error) {
+      errors.push({ source: `PWS ${row.source}`, message: row.error });
+    }
+  }
 
   const days = dates.map((date) => {
     const event = events.find((e) => e.localDate === date) ?? null;
@@ -237,6 +248,7 @@ export async function buildStation(icaoParam: string): Promise<StationPayload> {
     unit,
     days,
     lastMetar: last,
+    pws,
     wxOutlook,
     hourlyJ,
     hourlyDays,
@@ -245,7 +257,7 @@ export async function buildStation(icaoParam: string): Promise<StationPayload> {
     resolutionUrl: jEvent.resolutionUrl,
     wuHistoryUrl: historyUrl,
     wuHourlyUrl: hourlyUrl,
-    metarRawUrl: metarRawUrl(station.metarIcao),
+    metarRawUrl: tgftpMetarUrl(station.metarIcao),
     fetchedAt: new Date().toISOString(),
   };
 }

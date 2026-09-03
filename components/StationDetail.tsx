@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ModelDayValue, StationDay, StationPayload } from "@/lib/types";
 import { findBucket, marketFavorite, truncateTemp } from "@/lib/units";
 import { bucketColor, fmtProb, fmtTemp, relTime, tempToBucketColor } from "@/lib/format";
-import { stationLocalParts } from "@/lib/time";
+import { localDateTime, stationLocalParts } from "@/lib/time";
 import { gfsCycleClock } from "@/lib/gfs-cycle";
 import { BucketBars } from "./BucketBars";
 import { Sparkline } from "./Sparkline";
@@ -174,7 +174,7 @@ export function StationDetail({ icao }: { icao: string }) {
       </div>
 
       <section className="header-card">
-        <div className="card">
+        <div className="card" title={last?.raw ?? undefined}>
           <h2>Dernier METAR</h2>
           <div className="hero">{fmtTemp(last?.tempMarket ?? null, unit, 1)}</div>
           <div className="muted">
@@ -236,6 +236,35 @@ export function StationDetail({ icao }: { icao: string }) {
           )}
         </div>
       </section>
+
+      {data.pws.length > 0 && (
+        <section className="pws-section">
+          <div className="pws-grid">
+            {data.pws.map((row) => (
+              <div className="card" key={`${row.source}:${row.id}:${row.url}`}>
+                <h2>
+                  <a href={row.url} target="_blank" rel="noreferrer">
+                    PWS
+                  </a>
+                </h2>
+                <div className="hero">
+                  {row.status === "ok" ? fmtTemp(row.tempMarket, unit, 1) : "—"}
+                </div>
+                <div className="muted">
+                  {row.source}
+                  {row.id ? ` · ${row.id}` : ""}
+                  {row.name ? ` · ${row.name}` : ""}
+                </div>
+                <div className="muted">
+                  {row.obsTimeIso
+                    ? localDateTime(Date.parse(row.obsTimeIso), st.timezone)
+                    : row.error ?? "heure de relevé inconnue"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {data.errors.length > 0 && (
         <div className="card" style={{ marginBottom: 12 }}>

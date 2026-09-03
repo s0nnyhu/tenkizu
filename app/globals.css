@@ -511,6 +511,14 @@ table.grid tbody tr:hover {
   gap: 10px;
   margin-bottom: 12px;
 }
+.pws-section {
+  margin-bottom: 12px;
+}
+.pws-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
 .card {
   background: var(--bg-elev);
   border: 1px solid var(--line);
