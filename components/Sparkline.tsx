@@ -11,6 +11,7 @@ const COLORS: Record<string, string> = {
   icon_d2: "#a78bfa",
   arome: "#f472b6",
   harmonie: "#34d399",
+  met_norway: "#22d3ee",
   arpege: "#fb7185",
   ukmo: "#38bdf8",
   gfs: "#6ea8ff",

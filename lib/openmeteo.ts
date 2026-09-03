@@ -218,7 +218,7 @@ type StationOmOpts = {
 };
 
 function omKey(opts: StationOmOpts): string {
-  return `om7:${opts.icao}:${opts.unit}:${opts.dates.join(",")}`;
+  return `om8:${opts.icao}:${opts.unit}:${opts.dates.join(",")}`;
 }
 
 export async function fetchModelsForStation(opts: StationOmOpts): Promise<OmHourlyPack> {
