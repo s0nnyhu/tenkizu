@@ -151,6 +151,11 @@ export function StationDetail({ icao }: { icao: string }) {
         <a href={data.metarRawUrl} target="_blank" rel="noreferrer">
           METAR brut
         </a>
+        {data.pws.map((row) => (
+          <a key={row.url} href={row.url} target="_blank" rel="noreferrer">
+            PWS{row.id ? ` ${row.id}` : ""}
+          </a>
+        ))}
       </div>
 
       <div className="card clock-banner">
@@ -194,17 +199,15 @@ export function StationDetail({ icao }: { icao: string }) {
               key={`${row.source}:${row.id}:${row.url}`}
               title={hot ? "PWS au-dessus du dernier METAR" : undefined}
             >
-              <h2>
-                <a href={row.url} target="_blank" rel="noreferrer">
-                  PWS
-                </a>
-              </h2>
+              <h2>PWS</h2>
               <div className="hero">
                 {row.status === "ok" ? fmtTemp(row.tempMarket, unit, 1) : "—"}
               </div>
               <div className="muted">
-                {row.source}
-                {row.id ? ` · ${row.id}` : ""}
+                <a href={row.url} target="_blank" rel="noreferrer">
+                  {row.source}
+                  {row.id ? ` · ${row.id}` : ""}
+                </a>
                 {row.name ? ` · ${row.name}` : ""}
               </div>
               <div className="muted">
