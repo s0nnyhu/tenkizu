@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CITIES, type StaticCity } from "@/lib/cities";
 import { useFavorites } from "@/lib/favorites";
@@ -9,6 +9,12 @@ export function Dashboard() {
   const router = useRouter();
   const { favs, ready, has, toggle } = useFavorites();
   const [q, setQ] = useState("");
+  const [autoFocus, setAutoFocus] = useState(false);
+
+  useEffect(() => {
+    const touch = window.matchMedia("(pointer: coarse), (max-width: 640px)").matches;
+    if (!touch) setAutoFocus(true);
+  }, []);
 
   const favoriteRows = useMemo(() => {
     const byIcao = new Map(CITIES.map((c) => [c.icao, c]));
@@ -37,8 +43,9 @@ export function Dashboard() {
             placeholder="Rechercher une ville ou un ICAO…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            autoFocus
+            autoFocus={autoFocus}
             autoComplete="off"
+            inputMode="search"
           />
           {q.trim() && (
             <section className="search-hits">

@@ -95,6 +95,15 @@ export function Sparkline({
           setHover(hourFromClientX(e.currentTarget, e.clientX))
         }
         onMouseLeave={() => setHover(null)}
+        onTouchStart={(e) => {
+          const t = e.touches[0];
+          if (t) setHover(hourFromClientX(e.currentTarget, t.clientX));
+        }}
+        onTouchMove={(e) => {
+          const t = e.touches[0];
+          if (t) setHover(hourFromClientX(e.currentTarget, t.clientX));
+        }}
+        onTouchEnd={() => setHover(null)}
       >
         {rows.map((row, i) => {
           const stroke = colorFor(row.id, i);
