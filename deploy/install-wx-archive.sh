@@ -31,21 +31,35 @@ if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
 else
   RUN_USER="$(stat -c '%U' "$APP_DIR" 2>/dev/null || echo ubuntu)"
 fi
+RUN_GROUP="$(id -gn "$RUN_USER" 2>/dev/null || echo "$RUN_USER")"
 
-install -d -o "$RUN_USER" -g "$RUN_USER" -m 0755 "$DATA_DIR"
+if ! "$PYTHON" -c "from zoneinfo import ZoneInfo" 2>/dev/null; then
+  echo "python3 trop vieux ou tzdata manquant (zoneinfo). Ubuntu 22.04+ requis." >&2
+  exit 1
+fi
+
+install -d -o "$RUN_USER" -g "$RUN_GROUP" -m 0755 "$DATA_DIR"
 chmod +x "$SCRIPT"
+
+echo "Repo     : $APP_DIR"
+echo "Script   : $SCRIPT"
+echo "CSV      : $DATA_DIR"
+echo "User     : $RUN_USER"
+echo "Python   : $PYTHON"
 
 cat > "$UNIT_DST" <<EOF
 [Unit]
-Description=TenkiZu weather archive (METAR / NWP / PWS / Polymarket → CSV)
+Description=TenkiZu weather archive (METAR / NWP / PWS / WU / GEFS / Polymarket → CSV)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=${RUN_USER}
+Group=${RUN_GROUP}
 WorkingDirectory=${APP_DIR}/scripts/wx-archive
 Environment=PYTHONUNBUFFERED=1
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
 ExecStart=${PYTHON} ${SCRIPT} --out-dir ${DATA_DIR} --interval 1800 --stations LFPB,LIMC,EHAM
 Restart=always
 RestartSec=15
