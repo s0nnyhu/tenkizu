@@ -94,7 +94,7 @@ type GefsOpts = {
 
 function gefsKey(opts: GefsOpts): string {
   const cycle = gefsCycleUtc();
-  return `gefs1:${opts.icao}:${opts.unit}:${opts.dates.join(",")}:${cycle.label}`;
+  return `gefs2:${opts.icao}:${opts.lat.toFixed(5)}:${opts.lon.toFixed(5)}:${opts.unit}:${opts.dates.join(",")}:${cycle.label}`;
 }
 
 function emptyDay(date: string): GefsDay {
@@ -133,8 +133,8 @@ function packFromDaily(daily: EnsembleDaily | undefined, opts: GefsOpts): GefsPa
 
 async function gefsRequest(opts: GefsOpts): Promise<EnsembleResponse> {
   const params = new URLSearchParams({
-    latitude: opts.lat.toFixed(4),
-    longitude: opts.lon.toFixed(4),
+    latitude: opts.lat.toFixed(5),
+    longitude: opts.lon.toFixed(5),
     daily: "temperature_2m_max",
     models: "gfs025",
     timezone: opts.timezone,

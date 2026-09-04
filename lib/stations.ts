@@ -16,6 +16,13 @@ const HKO: StationMeta = {
   site: "Hong Kong Observatory",
 };
 
+/** GLOBAL-METAR lat/lon/elev — override aviationweather.gov when they drift. */
+const METAR_COORDS: Record<string, { lat: number; lon: number; elevFt: number }> = {
+  LFPB: { lat: 48.9694, lon: 2.44139, elevFt: 218 },
+  EHAM: { lat: 52.3086, lon: 4.76389, elevFt: -11 },
+  LIMC: { lat: 45.6306, lon: 8.72811, elevFt: 768 },
+};
+
 const REGION_BY_CC: Record<string, string> = {
   US: "Amériques", CA: "Amériques", MX: "Amériques", BR: "Amériques",
   AR: "Amériques", CL: "Amériques", CO: "Amériques", PE: "Amériques",
@@ -64,22 +71,27 @@ async function fetchStationInfo(icao: string): Promise<AwStation | null> {
 
 export async function resolveStation(icao: string, metarIcao: string): Promise<StationMeta> {
   if (icao === "HKO") return HKO;
-  return cached(`station:${icao}`, 24 * 3600_000, async () => {
+  return cached(`station:v2:${icao}`, 24 * 3600_000, async () => {
     const info = await fetchStationInfo(metarIcao || icao);
     if (!info || info.lat == null || info.lon == null) {
       throw new Error(`Station ICAO introuvable: ${icao}`);
     }
     const cc = (info.country ?? "").toUpperCase();
+    const fix = METAR_COORDS[icao] ?? METAR_COORDS[metarIcao];
+    const lat = fix?.lat ?? info.lat;
+    const lon = fix?.lon ?? info.lon;
+    const elevM =
+      fix != null ? Math.round(fix.elevFt * 0.3048) : (info.elev ?? null);
     return {
       icao,
       metarIcao: metarIcao || icao,
       name: info.site || info.name || icao,
-      lat: info.lat,
-      lon: info.lon,
-      elevM: info.elev ?? null,
+      lat,
+      lon,
+      elevM,
       country: cc,
       region: regionOf(cc),
-      timezone: timezoneOf(info.lat, info.lon),
+      timezone: timezoneOf(lat, lon),
       site: info.site || info.name || icao,
     };
   });

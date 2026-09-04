@@ -135,8 +135,8 @@ async function omRequest(
   timezone: string,
 ): Promise<OmResponse[]> {
   const params = new URLSearchParams({
-    latitude: latitudes.map((v) => v.toFixed(4)).join(","),
-    longitude: longitudes.map((v) => v.toFixed(4)).join(","),
+    latitude: latitudes.map((v) => v.toFixed(5)).join(","),
+    longitude: longitudes.map((v) => v.toFixed(5)).join(","),
     hourly: "temperature_2m",
     forecast_days: String(FORECAST_DAYS),
     past_days: "1",
@@ -218,7 +218,7 @@ type StationOmOpts = {
 };
 
 function omKey(opts: StationOmOpts): string {
-  return `om8:${opts.icao}:${opts.unit}:${opts.dates.join(",")}`;
+  return `om9:${opts.icao}:${opts.lat.toFixed(5)}:${opts.lon.toFixed(5)}:${opts.unit}:${opts.dates.join(",")}`;
 }
 
 export async function fetchModelsForStation(opts: StationOmOpts): Promise<OmHourlyPack> {

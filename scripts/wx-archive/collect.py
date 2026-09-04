@@ -40,21 +40,21 @@ STATIONS: dict[str, dict[str, Any]] = {
     "LFPB": {
         "city": "Paris",
         "lat": 48.9694,
-        "lon": 2.4414,
+        "lon": 2.44139,
         "tz": "Europe/Paris",
         "metar": "LFPB",
     },
     "LIMC": {
         "city": "Milan",
         "lat": 45.6306,
-        "lon": 8.7281,
+        "lon": 8.72811,
         "tz": "Europe/Rome",
         "metar": "LIMC",
     },
     "EHAM": {
         "city": "Amsterdam",
-        "lat": 52.3081,
-        "lon": 4.7642,
+        "lat": 52.3086,
+        "lon": 4.76389,
         "tz": "Europe/Amsterdam",
         "metar": "EHAM",
     },
@@ -269,8 +269,8 @@ def temp_at_hour(times: list[str], temps: list[float | None], hour_iso: str) -> 
 
 def fetch_models(lat: float, lon: float, tz_name: str) -> dict[str, Any]:
     params = {
-        "latitude": f"{lat:.4f}",
-        "longitude": f"{lon:.4f}",
+        "latitude": f"{lat:.5f}",
+        "longitude": f"{lon:.5f}",
         "hourly": "temperature_2m",
         "forecast_days": "4",
         "past_days": "1",
@@ -481,8 +481,8 @@ def _gefs_stats(cols: list[list[float | None]], idx: int) -> dict[str, float | N
 
 def fetch_gefs(lat: float, lon: float, tz_name: str, local_date: str) -> dict[str, str]:
     params = {
-        "latitude": f"{lat:.4f}",
-        "longitude": f"{lon:.4f}",
+        "latitude": f"{lat:.5f}",
+        "longitude": f"{lon:.5f}",
         "daily": "temperature_2m_max",
         "models": "gfs025",
         "timezone": tz_name,

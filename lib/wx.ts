@@ -138,33 +138,37 @@ export async function fetchWxOutlook(opts: {
   timezone: string;
   metar: MetarSnapshot | null;
 }): Promise<WxOutlook> {
-  const forecast = await cached(`wx-fc:${opts.icao}`, WX_TTL_MS, async () => {
-    try {
-      const params = new URLSearchParams({
-        latitude: opts.lat.toFixed(4),
-        longitude: opts.lon.toFixed(4),
-        hourly: "weather_code,precipitation,wind_speed_10m",
-        forecast_days: "2",
-        timezone: opts.timezone,
-        wind_speed_unit: "kn",
-        models: "ecmwf_ifs",
-        cell_selection: "nearest",
-      });
-      const data = await withRetry(() =>
-        fetchJson<OmWx>(`https://api.open-meteo.com/v1/forecast?${params}`, { timeoutMs: 12_000 }),
-      );
-      if (data.error) throw new Error(data.reason || "Open-Meteo wx");
-      const hourly = data.hourly;
-      if (!hourly) return null;
-      return {
-        times: (hourly.time ?? []).map(String),
-        weather: hourly.weather_code ?? [],
-        precip: hourly.precipitation ?? [],
-        windKt: hourly.wind_speed_10m ?? [],
-      };
-    } catch {
-      return null;
-    }
-  });
+  const forecast = await cached(
+    `wx-fc:${opts.icao}:${opts.lat.toFixed(5)}:${opts.lon.toFixed(5)}`,
+    WX_TTL_MS,
+    async () => {
+      try {
+        const params = new URLSearchParams({
+          latitude: opts.lat.toFixed(5),
+          longitude: opts.lon.toFixed(5),
+          hourly: "weather_code,precipitation,wind_speed_10m",
+          forecast_days: "2",
+          timezone: opts.timezone,
+          wind_speed_unit: "kn",
+          models: "ecmwf_ifs",
+          cell_selection: "nearest",
+        });
+        const data = await withRetry(() =>
+          fetchJson<OmWx>(`https://api.open-meteo.com/v1/forecast?${params}`, { timeoutMs: 12_000 }),
+        );
+        if (data.error) throw new Error(data.reason || "Open-Meteo wx");
+        const hourly = data.hourly;
+        if (!hourly) return null;
+        return {
+          times: (hourly.time ?? []).map(String),
+          weather: hourly.weather_code ?? [],
+          precip: hourly.precipitation ?? [],
+          windKt: hourly.wind_speed_10m ?? [],
+        };
+      } catch {
+        return null;
+      }
+    },
+  );
   return buildWxOutlook(opts.metar, forecast, opts.timezone);
 }

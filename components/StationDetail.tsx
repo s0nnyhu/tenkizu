@@ -102,7 +102,7 @@ export function StationDetail({ icao }: { icao: string }) {
             {st.site} <span>{st.icao}</span>
           </h1>
           <p>
-            {st.timezone} · {st.country} · {st.lat.toFixed(4)}, {st.lon.toFixed(4)} · unité marché °
+            {st.timezone} · {st.country} · {st.lat.toFixed(5)}, {st.lon.toFixed(5)} · unité marché °
             {unit}
             {st.icao !== st.metarIcao ? ` · METAR ${st.metarIcao}` : ""}
           </p>
