@@ -9,6 +9,7 @@ const PWS_TTL_MS = 2 * 60_000;
 export const PWS_STATIONS: Record<string, string[]> = {
   LFPB: ["https://www.awekas.at/fr/instrument.php?id=46887"],
   EHAM: ["https://www.awekas.at/fr/instrument.php?id=31057"],
+  EDDM: ["https://www.awekas.at/fr/instrument.php?id=44077"],
 };
 
 function metaFromUrl(url: string): { id: string; source: string } {

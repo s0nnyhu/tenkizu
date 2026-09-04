@@ -83,6 +83,7 @@ ALL_OM_IDS = list(dict.fromkeys(om for m in MODELS for om in m["om"]))
 PWS_STATIONS: dict[str, list[str]] = {
     "LFPB": ["https://www.awekas.at/fr/instrument.php?id=46887"],
     "EHAM": ["https://www.awekas.at/fr/instrument.php?id=31057"],
+    "EDDM": ["https://www.awekas.at/fr/instrument.php?id=44077"],
 }
 
 GAMMA = "https://gamma-api.polymarket.com"
