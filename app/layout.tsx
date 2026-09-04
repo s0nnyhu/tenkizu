@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TenkiZu",
+  title: "Weather forecast",
   description:
-    "TenkiZu — suivi read-only des marchés Polymarket Highest temperature, Tmax à la station ICAO.",
+    "Weather forecast — suivi read-only des marchés Polymarket Highest temperature, Tmax à la station ICAO.",
 };
 
 export const viewport: Viewport = {

@@ -35,7 +35,7 @@ export function Dashboard() {
     <div className="home">
       <header className="home-hero">
         <h1>
-          <span>TenkiZu</span>
+          <span>Weather forecast</span>
         </h1>
         <p>Highest temperature · favoris · Tmax à la station ICAO</p>
         <div className="home-search">
