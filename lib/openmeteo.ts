@@ -1,8 +1,13 @@
 import { cacheGet, cacheSet, cached } from "./cache";
-import { chunk, fetchJson, withRetry } from "./http";
-import { ALL_OPEN_METEO_IDS, MODELS, estimateRun, type ModelDef } from "./models";
-import { hourFromLocalIso } from "./time";
 import { fillSlots } from "./hourly";
+import { chunk, fetchJson, withRetry } from "./http";
+import {
+  ALL_OPEN_METEO_IDS,
+  MODELS,
+  estimateRun,
+  type ModelDef,
+} from "./models";
+import { hourFromLocalIso } from "./time";
 import type { ModelDayValue, ModelStatus, TempUnit } from "./types";
 import { toMarketUnit, truncateTemp } from "./units";
 
@@ -22,7 +27,11 @@ type OmResponse = {
 
 export type OmHourlyPack = {
   days: Record<string, ModelDayValue[]>;
-  hourly: { time: string[]; gfs: Array<number | null>; ecmwf: Array<number | null> };
+  hourly: {
+    time: string[];
+    gfs: Array<number | null>;
+    ecmwf: Array<number | null>;
+  };
   hourlyByDate: Record<string, Record<string, Array<number | null>>>;
   fetchedAt: string;
   error?: string;
@@ -32,7 +41,10 @@ function hourlyKey(omId: string): string {
   return `temperature_2m_${omId}`;
 }
 
-function seriesFor(hourly: OmHourly | undefined, omId: string): Array<number | null> {
+function seriesFor(
+  hourly: OmHourly | undefined,
+  omId: string,
+): Array<number | null> {
   if (!hourly) return [];
   const raw = hourly[hourlyKey(omId)] ?? hourly.temperature_2m;
   if (!raw) return [];
@@ -62,7 +74,11 @@ function tmaxForDay(
   return { tmax: best, peakLocal: peak };
 }
 
-function statusFor(def: ModelDef, dayHas: boolean, anyDayHas: boolean): ModelStatus {
+function statusFor(
+  def: ModelDef,
+  dayHas: boolean,
+  anyDayHas: boolean,
+): ModelStatus {
   if (dayHas) return "ok";
   if (anyDayHas) return "out_of_horizon";
   return def.coverage === "global" ? "unavailable" : "out_of_domain";
@@ -146,15 +162,26 @@ async function omRequest(
     temperature_unit: "celsius",
   });
   const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
-  const data = await withRetry(() => fetchJson<OmResponse | OmResponse[]>(url, { timeoutMs: 30_000 }));
+  const data = await withRetry(() =>
+    fetchJson<OmResponse | OmResponse[]>(url, { timeoutMs: 30_000 }),
+  );
   const list = Array.isArray(data) ? data : [data];
   const failed = list.find((r) => r.error);
   if (failed) throw new Error(failed.reason || "Open-Meteo error");
   return list;
 }
 
-function packFromHourly(hourly: OmHourly | undefined, opts: StationOmOpts): OmHourlyPack {
-  const daysList = buildDays(hourly, opts.dates, opts.unit, opts.runningMaxJ, opts.today);
+function packFromHourly(
+  hourly: OmHourly | undefined,
+  opts: StationOmOpts,
+): OmHourlyPack {
+  const daysList = buildDays(
+    hourly,
+    opts.dates,
+    opts.unit,
+    opts.runningMaxJ,
+    opts.today,
+  );
   const byDate: Record<string, ModelDayValue[]> = {};
   for (const date of opts.dates) byDate[date] = [];
   const nDates = opts.dates.length;
@@ -170,7 +197,9 @@ function packFromHourly(hourly: OmHourly | undefined, opts: StationOmOpts): OmHo
     days: byDate,
     hourly: {
       time: times,
-      gfs: seriesFor(hourly, "gfs013").map((v) => (v == null ? null : toMarketUnit(v, opts.unit))),
+      gfs: seriesFor(hourly, "gfs013").map((v) =>
+        v == null ? null : toMarketUnit(v, opts.unit),
+      ),
       ecmwf: seriesFor(hourly, "ecmwf_ifs").map((v) =>
         v == null ? null : toMarketUnit(v, opts.unit),
       ),
@@ -218,10 +247,12 @@ type StationOmOpts = {
 };
 
 function omKey(opts: StationOmOpts): string {
-  return `om9:${opts.icao}:${opts.lat.toFixed(5)}:${opts.lon.toFixed(5)}:${opts.unit}:${opts.dates.join(",")}`;
+  return `om10:${opts.icao}:${opts.lat.toFixed(5)}:${opts.lon.toFixed(5)}:${opts.unit}:${opts.dates.join(",")}`;
 }
 
-export async function fetchModelsForStation(opts: StationOmOpts): Promise<OmHourlyPack> {
+export async function fetchModelsForStation(
+  opts: StationOmOpts,
+): Promise<OmHourlyPack> {
   try {
     return await cached(omKey(opts), OM_TTL_MS, async () => {
       const [res] = await omRequest([opts.lat], [opts.lon], opts.timezone);
@@ -289,7 +320,9 @@ function hourlyByDateFrom(
     out[date] = {};
     for (const def of MODELS) {
       const pick = pickSubmodel(def, hourly ?? {}, times, date);
-      out[date][def.id] = pick ? fillSlots(times, pick.temps, date, unit, "last") : fillSlots(times, [], date, unit);
+      out[date][def.id] = pick
+        ? fillSlots(times, pick.temps, date, unit, "last")
+        : fillSlots(times, [], date, unit);
     }
   }
   return out;

@@ -9,6 +9,7 @@ const COLORS: Record<string, string> = {
   ecmwf_ifs: "#2ee6c5",
   icon: "#c084fc",
   icon_d2: "#a78bfa",
+  icon_2i: "#818cf8",
   arome: "#f472b6",
   harmonie: "#34d399",
   met_norway: "#22d3ee",

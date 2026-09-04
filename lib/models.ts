@@ -42,6 +42,16 @@ export const MODELS: ModelDef[] = [
     notes: "DWD ICON-D2 Europe centrale",
   },
   {
+    id: "icon_2i",
+    label: "ICON-2I",
+    group: "extra",
+    openMeteoIds: ["italia_meteo_arpae_icon_2i"],
+    coverage: "regional",
+    cycleHours: 12,
+    lagHours: 6,
+    notes: "ItaliaMeteo-ARPAE ICON-2I 2 km Europe du Sud",
+  },
+  {
     id: "arome",
     label: "AROME",
     group: "primary",

@@ -67,6 +67,7 @@ MODELS: list[dict[str, Any]] = [
     {"id": "ecmwf_ifs", "om": ["ecmwf_ifs"]},
     {"id": "icon", "om": ["icon_eu", "icon_global"]},
     {"id": "icon_d2", "om": ["icon_d2"]},
+    {"id": "icon_2i", "om": ["italia_meteo_arpae_icon_2i"]},
     {"id": "arome", "om": ["meteofrance_arome_france"]},
     {"id": "harmonie", "om": ["knmi_harmonie_arome_netherlands", "knmi_harmonie_arome_europe"]},
     {"id": "met_norway", "om": ["metno_nordic"]},
@@ -122,6 +123,25 @@ def fieldnames() -> list[str]:
         "wu_tmax_j1",
         "wu_tmax_j2",
         "wu_obs_tmax_j",
+        # Consensus = NWP ok hors CMA + WU (même règle que lib/dashboard.ts)
+        "cons_mean_j",
+        "cons_median_j",
+        "cons_min_j",
+        "cons_max_j",
+        "cons_n_j",
+        "cons_mean_trunc_j",
+        "cons_mean_j1",
+        "cons_median_j1",
+        "cons_min_j1",
+        "cons_max_j1",
+        "cons_n_j1",
+        "cons_mean_trunc_j1",
+        "cons_mean_j2",
+        "cons_median_j2",
+        "cons_min_j2",
+        "cons_max_j2",
+        "cons_n_j2",
+        "cons_mean_trunc_j2",
         "gefs_cycle",
         "gefs_mean_j",
         "gefs_min_j",
@@ -205,6 +225,58 @@ def fmt_num(v: float | None, digits: int = 1) -> str:
     if v is None or not isinstance(v, (int, float)):
         return ""
     return f"{v:.{digits}f}"
+
+
+def parse_num(s: str | None) -> float | None:
+    if not s:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def consensus_of(tmaxes: list[float]) -> dict[str, float | int | None]:
+    """Aligné sur lib/units.ts consensusOf + Math.trunc."""
+    n = len(tmaxes)
+    if not n:
+        return {"mean": None, "median": None, "min": None, "max": None, "n": 0, "mean_trunc": None}
+    mean = sum(tmaxes) / n
+    ordered = sorted(tmaxes)
+    mid = n // 2
+    median = ordered[mid] if n % 2 else (ordered[mid - 1] + ordered[mid]) / 2
+    return {
+        "mean": mean,
+        "median": median,
+        "min": min(tmaxes),
+        "max": max(tmaxes),
+        "n": n,
+        "mean_trunc": int(mean),  # toward zero, like Math.trunc
+    }
+
+
+def consensus_columns(row: dict[str, str]) -> dict[str, str]:
+    """NWP status ok hors CMA + WU forecast, comme dashboard.consensusFrom(..., includeWu=true)."""
+    out: dict[str, str] = {}
+    for suffix in ("j", "j1", "j2"):
+        vals: list[float] = []
+        for m in MODELS:
+            if m["id"] == "cma":
+                continue
+            v = parse_num(row.get(f"{m['id']}_tmax_{suffix}", ""))
+            if v is not None:
+                vals.append(v)
+        wu = parse_num(row.get(f"wu_tmax_{suffix}", ""))
+        if wu is not None:
+            vals.append(wu)
+        c = consensus_of(vals)
+        out[f"cons_mean_{suffix}"] = fmt_num(c["mean"])  # type: ignore[arg-type]
+        out[f"cons_median_{suffix}"] = fmt_num(c["median"])  # type: ignore[arg-type]
+        out[f"cons_min_{suffix}"] = fmt_num(c["min"])  # type: ignore[arg-type]
+        out[f"cons_max_{suffix}"] = fmt_num(c["max"])  # type: ignore[arg-type]
+        out[f"cons_n_{suffix}"] = str(int(c["n"])) if c["n"] else ""
+        out[f"cons_mean_trunc_{suffix}"] = "" if c["mean_trunc"] is None else str(int(c["mean_trunc"]))
+    return out
 
 
 def append_row(path: Path, row: dict[str, str]) -> None:
@@ -830,6 +902,8 @@ def collect_station(
         errors.append(f"wunderground: {err}")
         log.warning("wunderground %s: %s", icao, err)
 
+    row.update(consensus_columns(row))
+
     try:
         row.update(fetch_gefs(meta["lat"], meta["lon"], meta["tz"], local_date))
     except Exception as err:
@@ -866,12 +940,13 @@ def run_cycle(out_dir: Path, icaos: list[str]) -> None:
             path = out_dir / f"{icao}.csv"
             append_row(path, row)
             log.info(
-                "%s metar=%s pws=%s ecmwf=%s wu=%s gefs=%s fav=%s (%s) -> %s",
+                "%s metar=%s pws=%s ecmwf=%s wu=%s cons=%s gefs=%s fav=%s (%s) -> %s",
                 icao,
                 row.get("metar_temp_c") or "n/a",
                 row.get("pws_temp_c") or "n/a",
                 row.get("ecmwf_ifs_tmax_j") or "n/a",
                 row.get("wu_tmax_j") or "n/a",
+                row.get("cons_mean_j") or "n/a",
                 row.get("gefs_mean_j") or "n/a",
                 row.get("poly_favorite") or "n/a",
                 row.get("poly_favorite_yes") or "",
